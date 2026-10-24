@@ -18,6 +18,7 @@ from mne.minimum_norm import apply_inverse_epochs, make_inverse_operator
 from mne_connectivity import spectral_connectivity_epochs
 from mne.viz import circular_layout
 from mne_connectivity.viz import plot_connectivity_circle
+import bct 
 
 # Import our custom modules
 import config
@@ -564,3 +565,154 @@ if len(all_subjects_matrices_68) > 0:
     fig.savefig(stats_save_path, dpi=300)
     plt.close(fig)
     print(f"\nSaved statistical comparison graph to: {stats_save_path.name}")
+
+
+
+# =============================================================================
+# 8. GRAPH THEORY: GLOBAL EFFICIENCY & ADVANCED METRICS (bctpy)
+# =============================================================================
+
+if len(all_subjects_matrices_68) > 0:
+    print("\n" + "="*50)
+    print("CALCULATING GRAPH METRICS (GE, Clustering, Centrality, Participation)")
+    print("="*50)
+
+    #Global Efficiency
+    ge_dmn_per_subj = []
+    ge_pure_rest_per_subj = []
+    
+    
+    mean_cc_dmn_per_subj = []  # Clustering Coefficient
+    mean_ec_dmn_per_subj = []  # Eigenvector Centrality
+    mean_pc_dmn_per_subj = []  # Participation Coefficient
+
+    # Re-establish the indices just to be completely safe in this block
+    full_labels_for_ge = mne.read_labels_from_annot('fsaverage', parc='aparc', subjects_dir=config.subjects_dir)
+    original_68_names_ge = [lbl.name for lbl in full_labels_for_ge if 'unknown' not in lbl.name]
+    dmn_names_ge = [lbl.name for lbl in labels]
+    
+    dmn_indices_ge = [original_68_names_ge.index(name) for name in dmn_names_ge]
+    rest_indices_ge = [i for i in range(68) if i not in dmn_indices_ge]
+
+    community_vector = np.ones(68)
+    community_vector[rest_indices_ge] = 2
+
+    for i, mat_68 in enumerate(all_subjects_matrices_68):
+        # 1. Slice out the 14x14 DMN network
+        mat_dmn = mat_68[np.ix_(dmn_indices_ge, dmn_indices_ge)]
+        
+        # 2. Slice out the 54x54 Rest of Brain network (excluding DMN)
+        mat_pure_rest = mat_68[np.ix_(rest_indices_ge, rest_indices_ge)]
+        
+        # GLOBAL EFFICIENCY 
+        ge_dmn = bct.efficiency_wei(mat_dmn)
+        ge_pure_rest = bct.efficiency_wei(mat_pure_rest)
+        
+        ge_dmn_per_subj.append(ge_dmn)
+        ge_pure_rest_per_subj.append(ge_pure_rest)
+        
+        # ADVANCED METRICS
+        # 1. Clustering Coefficient (DMN)
+        cc_nodes = bct.clustering_coef_wu(mat_dmn)
+        mean_cc_dmn_per_subj.append(np.mean(cc_nodes))
+        
+        # 2. Eigenvector Centrality (DMN)
+        ec_nodes = bct.eigenvector_centrality_und(mat_dmn)
+        mean_ec_dmn_per_subj.append(np.mean(ec_nodes))
+        
+        # 3. Participation Coefficient (All brain -> Extract DMN)
+        pc_all_nodes = bct.participation_coef(mat_68, community_vector)
+        mean_pc_dmn_per_subj.append(np.mean(pc_all_nodes[dmn_indices_ge]))
+
+    # STATISTICAL TEST FOR GLOBAL EFFICIENCY
+    mean_ge_dmn = np.mean(ge_dmn_per_subj)
+    std_ge_dmn = np.std(ge_dmn_per_subj)
+    mean_ge_pure_rest = np.mean(ge_pure_rest_per_subj)
+    std_ge_pure_rest = np.std(ge_pure_rest_per_subj)
+
+    t_stat_ge, p_val_ge = stats.ttest_rel(ge_dmn_per_subj, ge_pure_rest_per_subj)
+
+    print(f"DMN Global Efficiency:                 {mean_ge_dmn:.5f} ± {std_ge_dmn:.5f}")
+    print(f"Pure Rest of Brain Global Efficiency:  {mean_ge_pure_rest:.5f} ± {std_ge_pure_rest:.5f}")
+    print(f"Paired t-test results:                 t = {t_stat_ge:.3f}, p = {p_val_ge:.3e}")
+
+    if p_val_ge < 0.05:
+        if mean_ge_dmn > mean_ge_pure_rest:
+            print("-> SIGNIFICANT: Information transfer in the DMN is globally MORE efficient than the rest of the brain.")
+        else:
+            print("-> SIGNIFICANT: Information transfer in the DMN is globally LESS efficient than the rest of the brain.")
+    else:
+        print("-> n.s.: No significant difference in global efficiency between the DMN and the rest of the brain.")
+
+
+    print(f"\nMean DMN Clustering Coefficient:  {np.mean(mean_cc_dmn_per_subj):.4f} ± {np.std(mean_cc_dmn_per_subj):.4f}")
+    print(f"Mean DMN Centrality:              {np.mean(mean_ec_dmn_per_subj):.4f} ± {np.std(mean_ec_dmn_per_subj):.4f}")
+    print(f"Mean DMN Participation Coef:      {np.mean(mean_pc_dmn_per_subj):.4f} ± {np.std(mean_pc_dmn_per_subj):.4f}")
+
+    # =========================================================================
+    # VISUALIZATION: GLOBAL EFFICIENCY VIOLIN PLOT 
+    # =========================================================================
+    plot_data_ge = pd.DataFrame({
+        'Subject': np.arange(1, len(ge_dmn_per_subj) + 1).tolist() * 2,
+        'Global Efficiency': ge_dmn_per_subj + ge_pure_rest_per_subj,
+        'Network': ['DMN (14 Nodes)'] * len(ge_dmn_per_subj) + ['Rest of Brain w/o DMN (54 Nodes)'] * len(ge_pure_rest_per_subj)
+    })
+
+    fig_ge, ax_ge = plt.subplots(figsize=(8, 6))
+    sns.violinplot(data=plot_data_ge, x='Network', y='Global Efficiency', palette=['#1f77b4', '#ff7f0e'], inner=None, alpha=0.6, ax=ax_ge)
+    sns.stripplot(data=plot_data_ge, x='Network', y='Global Efficiency', color='black', alpha=0.5, jitter=True, size=5, ax=ax_ge)
+    
+    significance_text_ge = f"p = {p_val_ge:.3e}\n***" if p_val_ge < 0.001 else (f"p = {p_val_ge:.3f}\n*" if p_val_ge < 0.05 else "n.s.")
+    
+    y_max_ge = plot_data_ge['Global Efficiency'].max()
+    y_range_ge = y_max_ge - plot_data_ge['Global Efficiency'].min()
+    bracket_y_ge = y_max_ge + (y_range_ge * 0.05)
+    
+    ax_ge.plot([0, 0, 1, 1], [bracket_y_ge, bracket_y_ge + (y_range_ge*0.02), bracket_y_ge + (y_range_ge*0.02), bracket_y_ge], lw=1.5, color='black')
+    ax_ge.text(0.5, bracket_y_ge + (y_range_ge*0.03), significance_text_ge, ha='center', va='bottom', color='black', fontsize=12, fontweight='bold')
+
+    plt.title("Network Integration: DMN vs Pure Rest of Brain", fontsize=14, pad=20)
+    plt.ylabel("Weighted Global Efficiency")
+    plt.xlabel("")
+    plt.ylim(bottom=plot_data_ge['Global Efficiency'].min() * 0.9, top=bracket_y_ge + (y_range_ge*0.15))
+    plt.tight_layout()
+    
+    ge_stats_save_path = config.graph_dir / 'Global_Efficiency_DMN_vs_Rest.png'
+    fig_ge.savefig(ge_stats_save_path, dpi=300)
+    plt.close(fig_ge)
+    print(f"\nSaved Global Efficiency statistical graph to: {ge_stats_save_path.name}")
+
+
+    # =========================================================================
+    # 9. EXPORT ALL METRICS TO CSV (FOR MACHINE LEARNING)
+    # =========================================================================
+    print("\n" + "="*50)
+    print("SUBJECT CLASSIFICATION & EXPORTING ALL METRICS")
+    print("="*50)
+
+
+    ge_dominance_vector = np.array([1 if d > r else 0 for d, r in zip(ge_dmn_per_subj, ge_pure_rest_per_subj)])
+    ge_ratio_vector = np.array(ge_dmn_per_subj) / np.array(ge_pure_rest_per_subj)
+    
+    num_dmn_dominant = np.sum(ge_dominance_vector == 1)
+    num_rest_dominant = np.sum(ge_dominance_vector == 0)
+
+    print(f"Total Subjects: {len(ge_dominance_vector)}")
+    print(f"Group 1 (DMN GE > Rest GE): {num_dmn_dominant} subjects")
+    print(f"Group 0 (DMN GE <= Rest GE): {num_rest_dominant} subjects")
+
+    vector_save_path = config.graph_dir / 'Combined_Graph_Metrics.csv'
+    
+    df_metrics = pd.DataFrame({
+        'Subject_Index': range(len(ge_dominance_vector)),
+        'DMN_GE': ge_dmn_per_subj,
+        'Rest_GE': ge_pure_rest_per_subj,
+        'GE_Ratio': ge_ratio_vector,
+        'DMN_GE_Dominant': ge_dominance_vector,
+        'Mean_CC_DMN': mean_cc_dmn_per_subj,   # Clustering
+        'Mean_EC_DMN': mean_ec_dmn_per_subj,   # Centrality
+        'Mean_PC_DMN': mean_pc_dmn_per_subj    # Participation
+    })
+    
+    df_metrics.to_csv(vector_save_path, index=False)
+    print(f"\nSaved ALL metrics (GE, CC, EC, PC) to: {vector_save_path.name}")
