@@ -9,13 +9,13 @@ from pathlib import Path
 # FILE PATHS AND DIRECTORIES
 # =============================================================================
 # Folder containing .set and .fdt files
-my_folder = r"C:\Users\nilia\OneDrive - Technion\Notability\סמסטר ז\פרוייקט א\עיבוד מקדים\LEMON\Preprocessed\test"
+my_folder = r"../LEMON/Preprocessed/Closed_Eyes_Recordings"
 
 # Directory to save generated graphs and HTML networks
-graph_dir = Path(r"C:\Users\nilia\OneDrive - Technion\Notability\סמסטר ז\פרוייקט א\עיבוד מקדים\LEMON\graphs_for_testset")
+graph_dir = Path(r"../LEMON/Processed/Graphs_And_Outputs")
 
 # MNE fsaverage head model directories
-fs_dir = Path(r"C:\Users\nilia\OneDrive - Technion\Notability\סמסטר ז\פרוייקט א\עיבוד מקדים\mne_data\MNE-fsaverage-data\fsaverage")
+fs_dir = Path(r"../MNE_Data/MNE-fsaverage-data/fsaverage")
 subjects_dir = fs_dir.parent
 
 # =============================================================================
