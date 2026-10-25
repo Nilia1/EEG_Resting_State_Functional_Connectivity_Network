@@ -3,6 +3,9 @@
 
 This repository provides an end-to-end Python pipeline for analyzing resting-state EEG data from the **LEMON Dataset**. The framework estimates cortical source-space dynamics, calculates Alpha-band Lagged Linear Coherence, computes complex network graph metrics (via `bctpy`), isolates Default Mode Network (DMN) topology, and models relationships with behavioral traits (e.g., BIS/BAS scores) using robust machine learning regression.
 
+<img width="1560" height="1093" alt="image" src="https://github.com/user-attachments/assets/9eb93f30-9082-42c1-ad78-2bafe187f548" />
+
+
 ## Features
 
 * **Automated Data Ingestion & Epoching:** Recursively locates and segments "Eyes Closed" resting-state intervals from EEGLAB (`.set`) files.
