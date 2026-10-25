@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 df = pd.read_excel('dataset.xlsx')
 
 # 2. Separate target label (y) and features (X)
-# This assumes your target is 'GE_Ratio' and the remaining columns are BIS/BAS
+# This assumes your target is 'GE_Ratio' and the remaining columns are the questionnaire results
 y = df['GE_Ratio'].dropna()
 X = df.loc[y.index].drop(columns=['GE_Ratio'])
 
@@ -84,5 +84,5 @@ plt.title('Predictors of DMN Global Efficiency')
 plt.grid(axis='x', linestyle='--', alpha=0.5)
 
 plt.tight_layout()
-plt.savefig('bisbas_ransac_results.png')
-print("\nPlot saved successfully as 'bisbas_ransac_results.png'.")
+plt.savefig('regression_ransac_results.png')
+print("\nPlot saved successfully as 'regression_ransac_results.png'.")
