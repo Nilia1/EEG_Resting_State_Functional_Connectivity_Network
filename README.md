@@ -113,6 +113,8 @@ RD Pascual-Marqui. “Instantaneous and lagged measurements of linear and nonlin
 Gramfort et al. MEG and EEG data analysis with MNE-Python. Frontiers in Neuroscience, 7(267):1–13, 2013.
 * **fsaverage:**
 Oostenveld et al. “FieldTrip: Open Source Software for Advanced Analysis of MEG, EEG, and Invasive Electrophysiological Data”, Computational Intelligence and Neuroscience, (2011):156869.
+* **eLORETA:**
+Pascual-Marqui, R. D., “Discrete, 3D Distributed, Linear Imaging Methods of Electric Neuronal Activity. Part 1: Exact, Zero Error Localization,” arXiv:0710.3341 [math-ph], October 17, 2007, http://arxiv.org/abs/0710.3341
 * **Desikan-Killiany Atlas:**
 Desikan, Rahul S et al. “An automated labeling system for subdividing the human cerebral cortex on MRI scans into gyral based regions of interest.” NeuroImage vol. 31,3 (2006): 968-80
 * **LEMON Dataset:**
